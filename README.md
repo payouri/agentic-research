@@ -70,6 +70,79 @@ Prefer the positive form where one exists; keep a short, sharp `Never` list wher
 
 ---
 
+## [agenticSkills/](agenticSkills/) — building agentic skills (SKILL.md)
+
+Researched 2026-09-10 from primary sources: the specification and its reference validator, ~28 tool
+implementations read from docs and source, 61 real SKILL.md files measured byte-by-byte, and the
+2026 benchmark and security literature.
+
+📖 [guide.md](agenticSkills/guide.md) · 📋 [rulebook.md](agenticSkills/rulebook.md) — 40 rules ·
+📚 [sources.md](agenticSkills/sources.md) — ~70 sources
+
+### What the research found
+
+**This time there is a specification** — [agentskills.io/specification](https://agentskills.io/specification),
+repo created 2025-12-16, with a runnable Python validator. Anthropic's old spec path is now an
+87-byte stub pointing at it. But it has **not** been donated to a foundation: the Linux Foundation's
+[AAIF announcement](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)
+names MCP, goose and AGENTS.md, and Agent Skills is absent.
+
+**Having a spec is not the same as having a standard.** It defines six frontmatter fields; Claude
+Code supports about twenty. And Claude Code is one of the very few clients that does *not* read
+`.agents/skills/` — the directory the spec's own implementer guide recommends for interoperability,
+and which Cursor, Copilot, Codex, Gemini CLI, OpenCode, Crush, goose, Cline, Kilo, Amp, Zed and Junie
+all read. **Portability is one-directional**, and Vercel, Supabase and Sentry have already migrated.
+Writing only to `.claude/skills/` is now the *less* portable choice.
+
+**Anthropic has published no efficacy numbers.** Its
+[engineering post](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+contains no benchmark, A/B, or cost comparison — verified by fetching it. Third parties filled the
+gap: [SkillsBench](https://arxiv.org/abs/2602.12670) measures "**16.2 percentage points**" from
+curated skills, but with "+4.5pp for Software Engineering" — the domain where skills help *least* —
+and 16 of 84 tasks getting worse.
+
+**Models cannot write the skills they benefit from reading.** Self-generated skills measure
+**−1.3pp against no skills at all**; independently, a
+[138K-file study](https://arxiv.org/html/2608.08453v1) finds AI-generated skills carry a **38% higher
+defect rate**. Two methods, one conclusion.
+
+**Skills substitute for capability.** Utility correlates with backbone model strength at
+**r = −0.90** ([SkillAudit](https://arxiv.org/html/2606.22613v1)). Expect your skill library to lose
+value as your model improves.
+
+**Progressive disclosure is the one design choice that has been isolated.**
+[SkillJuror](https://arxiv.org/html/2606.11543v1) holds task knowledge fixed and varies only
+structure: **46.1% vs 42.0%** pass rate, for +$0.03 per pass. The usual "because context rot"
+rationale, though, is inference — nobody has measured positional decay of the skill listing itself.
+
+**The description is the entire skill.** The body doesn't load until triggering already happened, so
+a trigger written in the body cannot fire. Missing trigger guidance is the most common defect in the
+wild at **52.3%**, and Anthropic's own `skill-creator` concedes "Claude has a tendency to
+'undertrigger' skills… make the skill descriptions a little bit 'pushy'." Two vendor pages
+contradict each other on voice — third person vs imperative — and the corpus settles it: the best
+descriptions are both, plus explicit negative scope.
+
+**"When NOT to use" appears as a body section in 1 of 61 measured skills.** The good ones put it in
+the description, where it can actually run.
+
+**The ecosystem you're joining is 89.3% non-compliant.** Across 138,133 public files, "**89.3%
+violate the official specification and 91.8% contain at least one detected reusability defect**".
+And linting won't tell you: structural scores and live efficacy correlate at **Spearman ρ = 0.14**
+([ACES](https://arxiv.org/html/2608.20614)).
+
+**A stale skill is not a no-op.** Agents adopt task-incorrect guidance **63–72% of the time,
+independent of model scale**, diverge by step 7, and recover 7–15% of the time — and *stronger models
+lose more* ([The Compliance Trap](https://arxiv.org/html/2607.10608)).
+
+**`allowed-tools` is not a sandbox, anywhere.** Claude Code: "It does not restrict which tools are
+available… **Workspace trust doesn't gate this field.**" Zed: "We parse the field but don't honor
+it." Factory: "not a runtime sandbox." Only GitHub Copilot acts on it, and only as pre-approval.
+Real skills agree — it appears in **1 of 61** files. Meanwhile **26.1%** of 31,132 marketplace skills
+carry a vulnerability, script-bundling skills are **2.12×** more likely to, and payload-less attacks
+hit **0.00% detection** against scanners that stop 91–99.8% of conventional ones.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
