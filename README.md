@@ -143,6 +143,119 @@ hit **0.00% detection** against scanners that stop 91–99.8% of conventional on
 
 ---
 
+## [gitGuardrails/](gitGuardrails/) — git guidelines, guardrails and green gates for agents
+
+Researched 2026-09-10 from primary sources: the vendors' own control-surface documentation and git's
+manual pages, the runtime behaviour of ~20 harnesses read from docs, source and issue trackers, a
+measured corpus of 100 agent instruction files and 155 published permission configs, and the 2026
+benchmark, incident and security literature.
+
+📖 [guide.md](gitGuardrails/guide.md) · 📋 [rulebook.md](gitGuardrails/rulebook.md) — 80 rules ·
+📚 [sources.md](gitGuardrails/sources.md) — ~130 sources
+
+### What the research found
+
+**Three words, three different kinds of thing.** A *guideline* is prose an agent may ignore. A
+*guardrail* is a mechanism that refuses. A *green gate* is an oracle that judges output. Almost every
+real configuration confuses two of them, and the confusion has a direction: teams write guidelines
+where they need guardrails, and put guardrails where only a gate can help.
+
+**The authority disclaims itself, in a table.** Anthropic's
+[permissions docs](https://code.claude.com/docs/en/permissions) say a deny rule "covers the invocation
+Claude usually produces **and isn't a security boundary around the program**" — then publish the git
+bypasses: a `Bash(git push *)` rule stops `git push origin main` and does not stop `git -C . push
+origin main`, `git -c push.default=current push origin main`, `git 'push' origin main`, `/usr/bin/git
+…`, or `sh -c 'git push …'`. Cursor, Zed and Cursor's classifier carry the same disclaimer. **Four
+vendors independently disclaim their own primary git control.**
+
+**And composition beats the allowlist at 96.59%.** [MOSAIC](https://arxiv.org/html/2607.02857v1) chains
+*individually allowlisted* commands across five agents over 2,525 trials — Claude Code 96.63%, Gemini
+CLI 97.43%, Codex 95.84%, Copilot CLI 96.24% — against instruction-injection baselines of **2.18%**
+and **0.79%**. The argument about whether a harness splits `&&` is moot; nothing in the chain needs a
+separator.
+
+**The rule the whole ecosystem omits is the only one the attacks care about.** MOSAIC's worked git
+chain is `git config core.hooksPath .githooks` plus a committed hook.
+[GitSpawn](https://www.manifold.security/blog/ai-coding-agents-git-hijack) (CVE-2026-55607) needs only
+a clone: `core.fsmonitor` in the repo's own `.git/config` runs "as the user, **outside the agent's
+sandbox and without an approval prompt**" — seven agents, **four unpatched at disclosure**. Git's own
+docs note `core.hooksPath` can be set to `/dev/null` to disable all hooks. Yet across 155 published
+`.claude/settings.json` files: **67 block force-push, 51 block `reset --hard`, and 1 blocks
+`.git/hooks` writes.** Forty-three percent guard against losing an afternoon; under one percent guard
+against arbitrary execution.
+
+**The one factorial study of instruction-file structure is a null.** Over 1,650 sessions and 16,050
+observations ([arXiv:2605.10039](https://arxiv.org/abs/2605.10039)), no detectable effect of file size,
+rule position, one-file-vs-split, or contradictions in adjacent files — with *affirmative* Bayes
+factors (BF₁₀ 0.05–0.10) for the size and conflict nulls. What predicts non-compliance is time on
+task: **−5.6% odds per function generated**. Stop reorganising the file.
+
+**Prose is a nudge, and the effect does not transfer.**
+[ImpossibleBench](https://arxiv.org/html/2510.20270v1) cut GPT-5's test-exploitation from over 85% to
+**1%** with a strict prohibition — and left o3 at **33%** on the identical prompt. Meanwhile joint
+compliance is what collapses: GPT-4o's prompt-level accuracy falls **0.94 → 0.21** across one to ten
+instructions while per-instruction accuracy only slides 0.94 → 0.85. A nine-item "never" list is being
+scored the way that collapses.
+
+**The vendor's own maximally-explicit prohibition failed on the command it names.** Claude Code's
+system prompt says "NEVER run destructive git commands (push --force, reset --hard, ...)";
+[issue #32476](https://github.com/anthropics/claude-code/issues/32476) documents it force-pushing to a
+third-party contributor's branch. Anthropic's answer was to move destructive-git policy out of prose
+and into the auto-mode classifier — which now blocks force push, `reset --hard`, `checkout -- .`,
+`clean -fd`, `stash drop`, `--amend` on a pushed commit, and approving its own PR.
+
+**A guardrail that lies is worse than one that fails open.**
+[Issue #50624](https://github.com/anthropics/claude-code/issues/50624): the Bash tool returned
+"Permission for this action has been denied. Reason: Pushing directly to the default branch (main) …
+bypasses PR review" to the model, and `git ls-remote` confirmed the commit on `origin/main`. Closed
+not planned. Separately, `PreToolUse` deny is **not enforced for MCP tools**, and **exit 1 does not
+block** — only exit 2 does.
+
+**Your instruction file is the highest-yield injection surface, measured.**
+[GitInject](https://arxiv.org/html/2606.09935v1) found PR-body injection has "limited success" while
+adding a `CLAUDE.md`/`AGENTS.md` to the PR branch **succeeded 2 of 2 across every provider tested**,
+because those load as operator-level instructions. The same paper found AgentDojo simulation **misses
+71.2% of confirmed real attacks**. The mitigation is already first-party: `claude-code-action` restores
+`.claude/`, `CLAUDE.md` and `.husky/` from the base branch on PR runs.
+
+**Instruction files regulate output shape and have abandoned destructive mechanics.** Across 100 files
+in 75 notable repos: 20 mandate a PR template, 5 forbid force-push, 4 forbid `--no-verify`, 2 forbid
+pushing to main, **1** forbids `git add -A`, **0** mention `.gitignore`. Median git section: **799
+bytes**. Fifteen say nothing about version control — including `openai/codex`'s own 22 KB `AGENTS.md`.
+
+**Green is not correct, and iterating against a weak gate makes it worse.** 29.6% of plausible
+SWE-bench patches behave differently from ground truth
+([arXiv:2503.15223](https://arxiv.org/abs/2503.15223)). Overfitting runs 21.8%/33.0% against *generated*
+tests versus 5.8%/11.3% against golden ones — and refining against the generated tests **raised** it to
+25.5%/35.9% for "only +5 resolved instances out of +8 apparent gains"
+([arXiv:2511.16858](https://arxiv.org/html/2511.16858)). The gate must be an oracle the agent did not
+shape.
+
+**Do not auto-retry "flaky" failures.** On Chromium's CI, flakiness prediction at 99.2% precision still
+missed **76.2% of all regression faults**, because flaky tests reveal more than a third of them
+([arXiv:2302.10594](https://arxiv.org/abs/2302.10594)).
+
+**Three ways an agent's push evades the gate entirely.** "events triggered by the `GITHUB_TOKEN` will
+not create a new workflow run" — so a token push runs no checks, a token-created PR queues them
+pending a human click, and only an App token or PAT runs them normally. Required checks also accept
+`skipped` and `neutral` as passing, and a merge queue deadlocks without a `merge_group` trigger.
+Meanwhile **61.38% of 33,596 AI-generated PRs had no recorded review activity at all**
+([arXiv:2605.02273](https://arxiv.org/html/2605.02273v1)).
+
+**The Replit story is not a git lesson.** The most-cited cautionary tale in this space documents **no
+git commands** — it was a production database. It is good evidence for one thing only, in the user's
+words: "I explicitly told it eleven times in ALL CAPS not to do this." Also folklore, with no primary
+source reachable: Google's "16% of tests are flaky", DORA 2025's "30% report little or no trust", and
+"3–4× faster with 10× the security findings."
+
+**The `Co-Authored-By` trailer is a genuine ecosystem fork.** `Co-Authored-By: …
+<noreply@anthropic.com>` is **mandatory** in `getsentry/sentry-javascript` and a **CI failure** in
+`twentyhq/twenty`, whose gate greps commits for exactly that string. Kubernetes, Rust, Node.js,
+Airflow and llama.cpp forbid it; three converge on `Assisted-by:`, which no harness emits. No
+first-party git or vendor guidance on AI attribution trailers exists at all.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
