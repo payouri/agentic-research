@@ -256,6 +256,82 @@ first-party git or vendor guidance on AI attribution trailers exists at all.
 
 ---
 
+## [contextSmartZone/](contextSmartZone/) — the zone where an agent still works well
+
+Researched 2026-09-17 from primary sources: vendor documentation and API references, the shipped
+source of 17 agent harnesses (including the Claude Code native binary), the 2023–2026 long-context
+measurement literature, and the published practice of the teams building these tools.
+
+📖 [guide.md](contextSmartZone/guide.md) · 📋 [rulebook.md](contextSmartZone/rulebook.md) — 40 rules ·
+📚 [sources.md](contextSmartZone/sources.md) — ~80 sources
+
+### What the research found
+
+**The smart zone is an order of magnitude smaller than the point where any harness intervenes.**
+NoLiMa (ICML 2025) measures *effective length* — "the longest context where a model maintains at
+least 85% of its base score" — at **2K–16K tokens** for models advertising 128K–2M
+([arXiv:2502.05167](https://arxiv.org/abs/2502.05167)), and BABILong finds models "effectively
+utilize only 10-20% of the context"
+([arXiv:2406.10149](https://arxiv.org/abs/2406.10149)). Meanwhile the *lowest* compaction trigger in
+the field is Gemini CLI's 0.5, and most cluster at 0.8–0.95. **Not one harness intervenes inside the
+measured zone** — because a compaction threshold is overflow protection, not quality management. The
+progress bar reports headroom, not health.
+
+**Vendors name the decay and never quantify it.** Anthropic's own docs say "As token count grows,
+accuracy and recall degrade, a phenomenon known as context rot", and Claude Code's best-practices
+page is blunter: "performance degrades as it fills." No vendor page anywhere states a number. The
+tell is in the defaults: Anthropic's **API** compacts at 150k of 1M (**15%**) and clears tool results
+at 100k (**10%**), while **Claude Code** runs to **~95%**. Same company, same models, same month.
+OpenAI makes no degradation claim at all.
+
+**Claude Code's threshold is absolute, which settles a live dispute.** Two contradictory third-party
+claims circulate ("~83% with a clamp", "~95%"). Read out of the shipped native binary, the function
+is `let r = e - 13000` — **`effective_window − 13,000` tokens, not a percentage**. That is 93.5% of a
+200K window but ~95.4% of a raw 1M, so the percentage moves with the window, which is exactly why
+field reports disagree. The `Math.min` clamp the "83%" claim asserted **is real**;
+`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` can only compact *earlier*. Both numbers wrong, the mechanism
+right.
+
+**Length hurts even when the context is perfect.** The strongest causal result: performance degrades
+**13.9%–85%** as input grows *even when models retrieve all relevant information perfectly*, and the
+effect **persists when irrelevant content is replaced with whitespace**
+([arXiv:2510.05381](https://arxiv.org/abs/2510.05381), EMNLP 2025 Findings). "Keep the context clean"
+is not sufficient advice. The goal is not a clean context — it is a short one.
+
+**The failure doesn't look like failure.** In a coding-agent audit study, success fell from **80% to
+30%** in extended context while **requirement coverage held at 92–94%**
+([arXiv:2607.17937](https://arxiv.org/html/2607.17937)). The agent keeps doing the bulk and drops the
+sparse critical obligations — the failure a reviewer skims past. Related: refusal rates climb
+**0% → 89.6%** near context ceilings, and Anthropic's own research finds safety monitors degrade
+**2×–30×**, with Opus 4.6 recall falling **99.7% → 69%** between 100K and 800K
+([arXiv:2605.12366](https://arxiv.org/html/2605.12366v1)).
+
+**"Keep under 40%" is folklore.** Its hardest statement is introduced by its author as "a mental
+model", carries no citation, and rests on a simulation whose own parameter is "Each file read uses 5%
+of the context window". The competing 10–20% figure *does* have a primary source (BABILong). The
+cited number survives contact with its source and the popular one does not — and the measured figure
+is **stricter** than the folklore, not looser.
+
+**The number your harness shows you is usually not the number that binds.** Five different
+denominators are in use across the field, so "90%" in Codex, Zed and Claude Code are different
+quantities. Gemini CLI's docs say `0.7` where its code says `0.5`. Cline's effective trigger is
+≈0.81 and exists as no constant. Continue's UI understates because it counts fewer tokens than the
+trigger does. Roo Code and Kilo Code both **ship the percentage trigger disabled**. Cursor's staff
+concede theirs "can trigger late or incorrectly". And Claude Code's window resolves through
+server-side `clientdata` and `experiment` sources — **two vendors can move your boundary without
+shipping a release**, and neither documents it.
+
+**Nobody has measured the question you actually have.** Whether *harness auto-compaction specifically*
+costs accuracy is unpublished — the literature compares engineered compaction against none, never
+on-versus-off. What is measured: simply dropping old tool results matches LLM summarisation's solve
+rate at **half the cost** ([arXiv:2508.21433](https://arxiv.org/abs/2508.21433)), and summariser
+quality alone is worth **6.5 points** ([arXiv:2607.05378](https://arxiv.org/html/2607.05378)).
+Sub-agents, under equal token budgets, **lose** to a single agent — except "in highly degraded
+contexts" ([arXiv:2604.02460](https://arxiv.org/html/2604.02460)), which makes context rot the
+empirical trigger for fan-out rather than a reason to prefer it.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
