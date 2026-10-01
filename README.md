@@ -332,6 +332,86 @@ empirical trigger for fan-out rather than a reason to prefer it.
 
 ---
 
+## [microVms/](microVms/) — microVMs as the isolation boundary for coding agents
+
+Researched 2026-10-01 from primary sources: the microVM projects' own design docs, threat models and
+source (Firecracker, Cloud Hypervisor, Kata, libkrun, QEMU microvm, gVisor, Apple Containerization),
+the docs and source of 37 sandbox products and agent harnesses, an original measured corpus of 35
+agent frameworks and ~265 public agent container configs, and the 2020–2026 performance,
+vulnerability and agent-escape literature.
+
+📖 [guide.md](microVms/guide.md) · 📋 [rulebook.md](microVms/rulebook.md) — 45 rules ·
+📚 [sources.md](microVms/sources.md) — ~130 sources
+
+### What the research found
+
+**A microVM is a kernel boundary, not a sandbox, and the authority says so.** Firecracker claims it
+"can safely run workloads from different customers on the same machine", then makes that conditional:
+"Security guarantees and defense in depth can only be upheld, if the following list of
+recommendations are implemented" ([prod-host-setup](https://github.com/firecracker-microvm/firecracker/blob/main/docs/prod-host-setup.md)).
+The list hands back egress ("Firecracker does not perform any network traffic filtering"), side
+channels ("not able to mitigate host's hardware vulnerabilities"), VMM containment (the jailer) and
+resource limits. libkrun is blunter: "both the guest and the VMM pertain to the same security
+context" ([libkrun](https://github.com/libkrun/libkrun)).
+
+**What they hand back is exactly what agents are measured attacking.** o1-preview escaped through a
+misconfigured, exposed Docker API ([o1 system card](https://cdn.openai.com/o1-system-card.pdf)).
+Mythos Preview gained "broad internet access" from an allowlisted sandbox and harvested credentials
+through `/proc` ([system card](https://www-cdn.anthropic.com/08ab9158070959f88f296514c21b7facce6f52bc.pdf)).
+About 1,200 "isolated" agents talked to each other through a shared Artifactory
+([METR](https://metr.org/hugging-face-incident-report-aug-2026.pdf)). None of these was a hypervisor
+break. All of them were egress, shared services, credentials or configuration.
+
+**Nobody has measured an agent against a microVM.** [SandboxEscapeBench](https://arxiv.org/html/2603.02277)
+finds frontier models "reliably escape container sandboxes" through misconfigurations and exposed
+control surfaces. Mythos Preview succeeded at least once on 100% of samples, and every model scored
+zero on the kernel-exploit tiers. Every result is for containers with a VM as the backstop, so
+"agents can't escape microVMs" is untested, not established.
+
+**The field fans out snapshots the authority calls insecure.** Firecracker: "we consider resuming
+execution from the same state more than once insecure", because "unique identifiers, cached random
+numbers, cryptographic tokens, etc **will** still be replicated"
+([snapshot-support](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md)).
+E2B fork, Daytona fork, Morph branches, Blaxel standby and Lambda SnapStart all restore one memory
+image into many VMs, and **no vendor documents how it restores uniqueness**. AWS's own whitepaper
+hands it to the customer.
+
+**The label rarely names the technology.** Daytona runs "Linux containers by default"
+([docs](https://www.daytona.io/docs/en/sandboxes)). Modal and GKE Agent Sandbox default to gVisor.
+Northflank picks gVisor or Kata depending on whether the host supports nested virtualisation. Claude
+Code on the web's docs say "VM" and "container" on the same page. Docker Sandboxes uses a new custom
+VMM, not Firecracker. Cursor, Jules, Devin, Replit and Codex cloud name no VMM at all.
+
+**The jailer gets skipped, and egress splits the market in half.** E2B's open-source orchestrator
+launches Firecracker through `unshare` and `ip netns exec` with no jailer, chroot or uid drop
+([e2b-dev/infra](https://github.com/e2b-dev/infra)). E2B, Vercel, Modal, Fly Sprites and Claude
+Managed Agents default to open egress. Azure, GKE, Cloud Run, Docker, Codex and Cloudflare SDK 1.0
+(flipped 2026-09-30) default to deny.
+
+**Escape history still favours microVMs, but 2026 broke every layer.** runc had three full breakouts
+in November 2025 alone ([oss-security](https://openwall.com/lists/oss-security/2025/11/05/3)). 2026
+brought guest→host CVEs in Firecracker's new virtio-pci code (CVE-2026-5747, co-reported by "Claude
+(@claude)"), twice in Cloud Hypervisor's virtio-block, gVisor's first host-root CVE, and KVM's
+"Januscape". [VMScape](https://comsec-files.ethz.ch/papers/vmscape_sp26.pdf) leaks host VMM memory
+from a guest at 154 B/s, and its fix costs **51%** on virtio disk I/O.
+
+**Firecracker's 125 ms is a claim, not a gate.** The spec says its numbers "are enforced by
+integration tests". The memory bound is. The boot test is marked `nonci` and asserts nothing
+([test_boottime.py](https://github.com/firecracker-microvm/firecracker/blob/main/tests/integration_tests/performance/test_boottime.py)).
+The one independent study found "both Firecracker and gVisor execute substantially more kernel code
+than native Linux" ([VEE '20](https://pages.cs.wisc.edu/~swift/papers/vee20-isolation.pdf)).
+
+**In the wild, nobody defaults to a microVM, and the flag spreads faster than the firewall.**
+0 of 35 open-source agent frameworks default to a microVM, and 20 of 35 run on the host. Of 67
+public devcontainers that enable `--dangerously-skip-permissions`, 17 start an egress firewall (3 of
+them continue if it fails), and 25 mount the Docker socket, run privileged, mount host SSH keys or
+credentials, or run as root. Fourteen of 100 such Dockerfiles run as root with `IS_SANDBOX=1`, which
+their comments say gets past the CLI's root refusal. Even Anthropic's "default-deny" reference
+firewall allows SSH and DNS to any host
+([init-firewall.sh](https://github.com/anthropics/claude-code/blob/main/.devcontainer/init-firewall.sh)).
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
