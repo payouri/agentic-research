@@ -412,6 +412,80 @@ firewall allows SSH and DNS to any host
 
 ---
 
+## [agentMemory/](agentMemory/) — persistent memory for coding agents
+
+Researched 2026-10-01 from primary sources: vendor documentation from Anthropic, OpenAI, Google,
+GitHub, Cursor, Windsurf, AWS and Microsoft; the shipped source of 20+ harnesses and memory frameworks
+(including the Claude Code native binary); 46 real memory files committed to public repos, measured
+here; and the 2023–2026 memory benchmark and memory-poisoning literature.
+
+📖 [guide.md](agentMemory/guide.md) · 📋 [rulebook.md](agentMemory/rulebook.md) — 38 rules ·
+📚 [sources.md](agentMemory/sources.md) — ~115 sources
+
+### What the research found
+
+**Memory is a write problem, not a read problem.** Storing every experience versus storing only
+those that pass a strict filter: **13.05% vs 38.50%** success on the same agent
+([arXiv:2505.16067](https://arxiv.org/html/2505.16067)). On real coding tasks, "eleven of twelve
+solver and system pairings fail to exceed the matched memory-off baseline" — yet the same
+experience, verified and injected directly, *gains* 1.1–4.5 points
+([VibeMemBench](https://arxiv.org/html/2609.23570)). An agent's self-chosen summary scores **22.22%**
+against **26.26%** with no memory at all; a curated 217-token one scores 34.34%
+([SWE-ContextBench](https://arxiv.org/html/2602.08316v3)). What you let in decides everything.
+
+**The field retreated from "the agent saves facts when it feels like it."** In twelve months Gemini
+CLI deleted `save_memory` ([PR #26941](https://github.com/google-gemini/gemini-cli/pull/26941)),
+Cursor removed IDE Memories without a changelog line
+([forum](https://forum.cursor.com/t/are-my-memories-gone/144057)), Devin deprecated Knowledge,
+Windsurf's default agent stopped persisting memories, and mem0 went ADD-only. What survived is one
+layout, reached independently by Claude Code, Gemini CLI, Codex, OpenHands and Letta: a `MEMORY.md`
+index loaded at start, topic files read on demand.
+
+**There is no standard, and the vendors agree anyway.** No memory project exists at the Agentic AI
+Foundation; the W3C effort is a Community Group that "does not produce W3C Recommendations or
+standards" ([charter](https://www.w3.org/community/ai-agent-memory-interop/)). Yet unprompted, the
+docs converge: rules belong in AGENTS.md, not memory — "not as the only source for rules that must
+always apply" ([Codex](https://learn.chatgpt.com/docs/customization/memories.md)); "Memory is not
+proof of current behavior" ([openai/codex](https://github.com/openai/codex)); and skip "anything it
+can derive from the codebase" ([Claude Code](https://code.claude.com/docs/en/memory)).
+
+**Memory layers fail at updating.** On multi-hop fact updates "all methods fail… at most 28%
+accuracy", with Mem0 at **2%** and Zep at **3%**
+([MemoryAgentBench](https://arxiv.org/html/2507.05257)). On recall benchmarks memory buys *cost*, not
+accuracy: Mem0's own paper puts full context first on LoCoMo, 72.9% vs 66.9%
+([arXiv:2504.19413](https://arxiv.org/html/2504.19413v1)) — and that scoreboard is broken anyway, with
+"6.4% of the answer key" wrong and a judge that "accepted 62.81%" of deliberately wrong answers
+([audit](https://dev.to/penfieldlabs/we-audited-locomo-64-of-the-answer-key-is-wrong-and-the-judge-accepts-up-to-63-of-intentionally-33lg)).
+
+**Almost nothing expires, and the index is truncated silently.** Only Copilot (28 days unused,
+[docs](https://docs.github.com/en/copilot/concepts/agents/copilot-memory)) and Codex (30) expire
+memory. Claude Code keeps the *first* 200 lines / 25,000 bytes of `MEMORY.md`, so new entries
+appended at the bottom are what disappear; OpenHands keeps the *last* 6,000 chars. Claude Code also
+ships an undocumented background "auto-dream" consolidation (≥24 h and ≥5 sessions) that may delete
+memory files; Gemini's equivalent writes patches to an inbox and "never applies them without your
+approval" ([gemini-cli](https://github.com/google-gemini/gemini-cli)).
+
+**Codex documents defaults it doesn't ship.** The config reference says `max_rollouts_per_startup`
+defaults to 16 and `max_rollout_age_days` to 30
+([reference](https://learn.chatgpt.com/docs/config-file/config-reference.md)); the code says
+**2 and 10** (`codex-rs/config/src/types.rs` @ 6b4daaf).
+
+**In the wild, memory goes stale and leaks people, not keys.** Of 46 committed memory files, 20 sat
+untouched over 90 days while their repos moved on, ~7 hold frozen task state, and none held a secret
+— but 3 held personal details about a named person, including a committed Claude Code auto-memory
+directory with a maintainer's name, email and behavioural profile. The best files cite provenance
+per fact ("measured on nginx 1.26 and 1.28") and point to authority instead of copying it.
+
+**Persistence is the attack.** Against Claude Code, persistent memory poisoning measures **66.9%**
+injection and **81.7%** cross-session success ([arXiv:2609.13889](https://arxiv.org/abs/2609.13889),
+abstract). Anthropic's v2.1.50 mitigation "removes user memories from the system prompt"
+([Cisco](https://blogs.cisco.com/ai/identifying-and-remediating-a-persistent-memory-compromise-in-claude-code))
+— but the index is still injected every session, as a user message. Memory was moved, not removed.
+And the CVE blogs attach to it, CVE-2026-21852, is an API-key leak through project settings
+([NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-21852)); no memory-poisoning CVE exists.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
