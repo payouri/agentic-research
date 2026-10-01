@@ -556,6 +556,72 @@ reviewed and merged.
 
 ---
 
+## [agentSandboxing/](agentSandboxing/) — sandboxing coding agents above the hypervisor
+
+Researched 2026-10-01 from primary sources: the OS primitives' own documentation (Seatbelt,
+bubblewrap, Landlock, seccomp, Windows), the docs and source of a dozen agent harnesses (including the
+Claude Code and Copilot CLI binaries), 100+ containment advisories across eight harnesses, this
+dossier's own sample of ~600 committed agent configurations, OWASP/Five Eyes/MITRE guidance, and the
+2025–2026 defence literature. Builds on [microVms/](microVms/) for the hypervisor layer.
+
+📖 [guide.md](agentSandboxing/guide.md) · 📋 [rulebook.md](agentSandboxing/rulebook.md) — 35 rules ·
+📚 [sources.md](agentSandboxing/sources.md) — ~90 sources
+
+### What the research found
+
+**No sandbox primitive was broken; every escape is a planted file run from outside.** Claude Code's
+bubblewrap sandbox didn't protect a `.claude/settings.json` that "did not exist at startup", letting
+the agent "inject persistent hooks… that would execute with host privileges"
+([CVE-2026-25725](https://github.com/advisories/GHSA-ff64-7w26-62rf)); a symlink where "neither the
+sandboxed command nor the unsandboxed app could independently write outside the workspace, but their
+combination could" ([CVE-2026-39861](https://github.com/advisories/GHSA-vp62-r36r-9xqp)); Cursor's
+"Sandbox escape via Git hooks" and via a working directory that let the agent overwrite the sandbox
+helper itself ([advisories](https://github.com/cursor/cursor/security/advisories)). Seatbelt,
+bubblewrap and Landlock held every time. The boundary was drawn in the wrong place.
+
+**The defaults make the sandbox optional.** Claude Code: `sandbox.enabled` "Default: `false`"; if it
+can't start, "commands run unsandboxed"; and the model is told to "Immediately retry with
+`dangerouslyDisableSandbox: true` (don't ask, just do it)"
+([docs](https://code.claude.com/docs/en/sandboxing)). Gemini CLI and Copilot CLI ship it off too.
+Codex is the exception: sandbox on, network off, and a missing bubblewrap is a hard failure.
+
+**Almost nobody turns it on.** In a random sample of 192 committed Claude Code settings files measured
+here, **1** enables the sandbox; of 30 that set `bypassPermissions`, **0** have one. 665 files in 632
+repos alias an agent straight to its bypass flag. Committed `settings.local.json` files outnumber
+shared ones, and 3 of 98 sampled hold credential-shaped strings — one a bearer token persisted inside
+a "don't ask again" approval.
+
+**Command rules are not a boundary, and their vendors say so.** ~22 advisories bypass command
+classifiers through shell expansion, `$IFS`, built-ins and env prefixes. Anthropic: Bash rules
+"isn't a security boundary around the program"; Read deny rules "don't apply to… `grep -r pattern .`…
+or to arbitrary subprocesses" ([permissions](https://code.claude.com/docs/en/permissions)). Of 17
+sampled configs that deny reading `.env`, none enables the sandbox and 5 also allow `grep` or `node`.
+
+**Humans approve 93–97% of prompts and catch 13.6% of dangerous commands** — Anthropic's own figures,
+from a 1,053-tester study ([Anthropic](https://claude.com/blog/auto-mode-default-in-claude-code)).
+Model classifiers do better but leak: Claude Code's auto mode has a **17%** false-negative rate on real
+overeager actions ([engineering](https://www.anthropic.com/engineering/claude-code-auto-mode)), and
+adaptive attacks bypass most published defences at >90%
+([arXiv:2510.09023](https://arxiv.org/abs/2510.09023)).
+
+**Vendors and authorities disagree on who approves.** Auto mode became Claude Code's default in
+v2.1.283 and Auto-review Cursor's in 3.6. The Five Eyes guidance says approval decisions are "not
+delegated to the agentic AI system"; MITRE ATLAS says "final adjudication should be conducted by a
+human decision-maker". The reconciliation the evidence licenses: the approver decides *whether*, the
+sandbox bounds *how bad*.
+
+**The primitives' own docs say they aren't sandboxes.** seccomp: "System call filtering isn't a
+sandbox." bubblewrap: "not a complete, ready-made sandbox." Apple marks `sandbox-exec` "DEPRECATED" —
+and every major harness's macOS sandbox is built on it.
+
+**Guarantees exist in research and nowhere in product.** CaMeL blocks every AgentDojo attack at 77% vs
+84% task success ([arXiv:2503.18813](https://arxiv.org/abs/2503.18813)); Progent cuts attack success
+from 39.9% to 1.0%. No coding harness ships capability or information-flow enforcement, and hardening
+12 real coding agents cost 18.3 points of success and 167% more spend
+([arXiv:2608.02670](https://arxiv.org/abs/2608.02670)).
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
