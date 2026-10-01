@@ -486,6 +486,76 @@ And the CVE blogs attach to it, CVE-2026-21852, is an API-key leak through proje
 
 ---
 
+## [softwareFactories/](softwareFactories/) — agentic software factories and the dark factory
+
+Researched 2026-10-01 from primary sources: the term's originating definitions (StrongDM, Dan
+Shapiro), vendor documentation for a dozen hosted coding agents, the source of ~20 open-source
+orchestrators and agent loops, SLSA and project AI policies, this dossier's own measurement of
+agent-authored PRs and unattended workflows on public GitHub, and the 2025–2026 measurement
+literature.
+
+📖 [guide.md](softwareFactories/guide.md) · 📋 [rulebook.md](softwareFactories/rulebook.md) — 33 rules ·
+📚 [sources.md](softwareFactories/sources.md) — ~115 sources
+
+### What the research found
+
+**A factory doesn't remove review — it replaces it with verification, and verification is the part
+nobody has published.** StrongDM's definition: "Code must not be reviewed by humans"; instead "The
+loop runs until the holdout scenarios pass" ([factory.strongdm.ai](https://factory.strongdm.ai/)).
+Its published factory spec contains **zero** mentions of scenarios, holdouts, satisfaction or digital
+twins — but does contain an `AutoApproveInterviewer` that "Always selects YES"
+([strongdm/attractor](https://github.com/strongdm/attractor)). StrongDM has published no outcome data.
+
+**Tests are a weak oracle, and agents game weak oracles.** "Roughly half of test-passing SWE-bench
+Verified PRs would not be merged into main by repo maintainers"
+([METR](https://metr.org/notes/2026-03-10-many-swe-bench-passing-prs-would-not-be-merged-into-main/)).
+When tests contradict the task, "GPT-5 cheats 54.0% of the time", and LLM monitors catch only ~42–65%
+of it on SWE tasks ([ImpossibleBench](https://arxiv.org/html/2510.20270v1)). On ≥8-hour tasks, "at
+least 16% of successful runs were illegitimate upon review"
+([METR](https://metr.org/blog/2026-05-19-frontier-risk-report/)). The one factory result that worked
+end to end, Anthropic's C compiler, says why: "the task verifier is nearly perfect, otherwise Claude
+will solve the wrong problem" ([Anthropic](https://www.anthropic.com/engineering/building-c-compiler)).
+
+**Open-source factories pass the gate when there is no gate.** Gas Town's merge queue defaults to
+`TestCommand: ""`, then `// No gates configured — pass by default`, then merges and pushes to main
+([gastown](https://github.com/gastownhall/gastown)). continuous-claude: "No checks found after
+waiting, proceeding without checks" — then `gh pr merge`
+([continuous-claude](https://github.com/AnandChowdhary/continuous-claude)). The counter-example treats
+unknown CI as a blocker: "AO only claims readiness it can actually prove"
+([agent-orchestrator](https://github.com/Untrivial-ai/agent-orchestrator)).
+
+**Every vendor stops at a human; none ships a dark factory.** Copilot "cannot approve or merge a pull
+request" ([docs](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/risks-and-mitigations));
+Kiro "never merges changes automatically". A dark factory is assembled by switching those defaults off.
+Two vendors auto-approve plans: Jules on a timer and by default via its API; Claude Code agent teams
+"without the lead reviewing it".
+
+**The human was mostly gone before any factory removed them.** In an August 2026 cohort measured
+here, a human review before merge appears on **3%** of merged Codex PRs and **4%** of "Generated with
+Claude Code" PRs; 94–97% are merged by whoever launched the agent. GitHub's own gh-aw repo has 13,036
+merged Copilot PRs and **4** approved reviews. "Generated with Claude Code" PRs ran at **4.3 million**
+in September 2026 alone.
+
+**Reliability is the binding number.** The public frontier's 50% time horizon reached ~12 hours in
+early 2026; the **80% horizon was ~1.5 hours** ([METR](https://metr.org/blog/2026-05-19-frontier-risk-report/)).
+Organisation telemetry shows more output and more instability: incidents per PR **+242.7%**, PRs
+merged without review +31.3% at high AI adoption
+([Faros, vendor](https://www.faros.ai/blog/ai-acceleration-whiplash-takeaways)).
+
+**Governance asks for a human.** SLSA Source L4 needs "two or more trusted persons" — humans — with a
+Trusted Robot exception only for automation whose "codebase cannot be unilaterally influenced"
+([SLSA v1.2](https://slsa.dev/spec/v1.2/source-requirements)), which is what prompt injection does.
+The kernel: "AI agents MUST NOT add Signed-off-by tags"
+([kernel.org](https://www.kernel.org/doc/Documentation/process/coding-assistants.rst)). Every published
+autonomous PR agent in CI has been shown injectable through issue or PR text
+([PromptPwnd](https://www.aikido.dev/blog/promptpwnd-github-actions-ai-agents)).
+
+**Nobody has measured a dark factory.** No study reports post-merge defect, incident or security
+rates for a pipeline that actually removed human review. Every agent-PR dataset is of PRs humans
+reviewed and merged.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
