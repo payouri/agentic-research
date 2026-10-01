@@ -68,14 +68,17 @@ core.hooksPath .githooks`, and which ships a `.githooks/pre-commit` hook contain
 malicious_command." `mosaic` Every command is on the allowlist. The payload fires on the next commit
 — including the commit your own pre-commit gate is running.
 
-**GitSpawn** (CVE-2026-55607 and siblings, disclosed early September 2026) inverts it: no setup step
+**GitSpawn** (disclosed 1 September 2026; CVE-2026-19592 Codex, CVE-2026-72718 Goose, CVE-2026-71963 Hermes) inverts it: no setup step
 needed. `core.fsmonitor` is "a Git performance setting whose value is a command that Git runs to
 identify changed files, and Git reads it from the repository's own `.git/config`." Cloning a hostile
 repo is enough. "The command executes as the user, **outside the agent's sandbox and without an
 approval prompt**." Seven agents affected — Claude Code, Codex CLI and Desktop, Cursor, Goose, Qwen
 Code, Hermes, Grok Build — and **four were unpatched at publication**, including a second Claude Code
 path reported 15 July 2026 and still open at 2.1.252: "This one is not `core.fsmonitor`. It is a
-different git setting of the same kind." `gitspawn` `gitspawn-thn`
+different git setting of the same kind." Claude Code's `core.fsmonitor` path was fixed in 2.1.196
+with no CVE. CVE-2026-55607, often reported as GitSpawn's Claude Code id, is a separate and earlier
+bug: a worktree path-confusion escape from the Seatbelt sandbox, which also leans on fsmonitor, fixed
+in 2.1.163. `gitspawn` `gitspawn-thn` `cc-ghsa-worktree`
 
 **Git's own manual** explains why this class exists: `core.hooksPath` lets you relocate hooks
 wholesale, and "You can also disable all hooks entirely by setting `core.hooksPath` to `/dev/null`."

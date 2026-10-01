@@ -190,8 +190,9 @@ Original counts made for this dossier via authenticated GitHub API and code sear
   Tenable (P5); this repository's `gitGuardrails` dossier maps it, via The Hacker News (P5), to
   GitSpawn's `core.fsmonitor` finding. **NVD (`cve-cc-worktree`) settles it**: published
   2026-06-29, two months before GitSpawn, describing worktrees named ".git" and "navigation to
-  worktrees outside the sandbox context", fixed 2.1.163. The `gitGuardrails` CVE mapping should be
-  treated as a probable misattribution; its GitSpawn finding itself is unaffected.
+  worktrees outside the sandbox context", fixed 2.1.163. Confirmed against GitHub advisory
+  GHSA-7835-87q9-rgvv and Manifold's own post, which assigns GitSpawn's Claude Code finding no CVE.
+  The `gitGuardrails` mapping has been corrected (its conflict 11). GitSpawn itself is unaffected.
 - **Firecracker hotplug.** Kata's threat model and its 2026-09-30 virtualization doc (`kata-threat`,
   `kata-hv`) say Firecracker has no hotplug. Firecracker's changelog (`fc-changelog`) added PCI
   device hotplug in v1.16.0 — as **developer preview**, which `fc-release` says not to use in

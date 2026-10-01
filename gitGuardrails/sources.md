@@ -119,8 +119,9 @@ moved to `/docs/en/permissions`.
 
 | Key | Source | Tier | Date | What it settles |
 |---|---|---|---|---|
-| `gitspawn` | [GitSpawn](https://www.manifold.security/blog/ai-coding-agents-git-hijack), Manifold Security | P3 | ~2026-09-01 | `core.fsmonitor` read from a cloned repo's own `.git/config` — "a Git performance setting whose value is a command that Git runs"; "The command executes as the user, **outside the agent's sandbox and without an approval prompt**". Seven agents, **four unpatched at publication**, including a second, deliberately unnamed Claude Code git setting still open at 2.1.252 |
-| `gitspawn-thn` | [Malicious .git Configs Can Make Claude, Codex, Cursor… Run Attacker Code](https://thehackernews.com/2026/09/malicious-git-configs-can-make-claude.html) | P5 | 2026-09-02 | The CVE ids and affected ranges: CVE-2026-55607 (Claude Code), CVE-2026-19592 (Codex), CVE-2026-72718 (Goose, CVSS 7.0), CVE-2026-71963 (Hermes) |
+| `gitspawn` | [GitSpawn](https://www.manifold.security/blog/ai-coding-agents-git-hijack), Manifold Security | P3 | ~2026-09-01 | `core.fsmonitor` read from a cloned repo's own `.git/config` — "a Git performance setting whose value is a command that Git runs"; "The command executes as the user, **outside the agent's sandbox and without an approval prompt**". Seven agents, **four unpatched at publication**, including a second, deliberately unnamed Claude Code git setting still open at 2.1.252. Its Claude Code `core.fsmonitor` finding (reported 26 June 2026) was "Fixed in 2.1.196", closed as a duplicate, **no CVE assigned** — the post names CVEs only for Goose and Hermes |
+| `gitspawn-thn` | [Malicious .git Configs Can Make Claude, Codex, Cursor… Run Attacker Code](https://thehackernews.com/2026/09/malicious-git-configs-can-make-claude.html) | P5 | 2026-09-02 | CVE ids and affected ranges. CVE-2026-19592 (Codex), CVE-2026-72718 (Goose, CVSS 7.0) and CVE-2026-71963 (Hermes) are confirmed against NVD as `core.fsmonitor` bugs. **Its CVE-2026-55607 (Claude Code) attribution is wrong** — see `cc-ghsa-worktree` and conflict 11 |
+| `cc-ghsa-worktree` | [GHSA-7835-87q9-rgvv](https://github.com/anthropics/claude-code/security/advisories/GHSA-7835-87q9-rgvv) / [NVD CVE-2026-55607](https://nvd.nist.gov/vuln/detail/CVE-2026-55607), Anthropic | P1 | advisory 2026-06-25; NVD 2026-06-29; fetched 2026-10-01 | "Sandbox Escape via Git Worktree Path Confusion": worktrees named ".git" plus symlinks and fsmonitor execution overwrite files such as `.zshenv`, "leading to code execution outside of seatbelt sandbox restrictions"; 2.1.38–2.1.162, fixed 2.1.163; reported via HackerOne by metnew. A distinct, earlier bug — not GitSpawn |
 | `tob-rce` | [Prompt injection to RCE in AI agents](https://blog.trailofbits.com/2025/10/22/prompt-injection-to-rce-in-ai-agents/), Trail of Bits | P3 | 2025-10-22 | Allowlist escape via `git show --format` with hex payloads chained through `ripgrep --pre`; CVE-2025-54795 (Claude Code) and GHSA-534m-3w6r-8pqr (Cursor); "pre-approved commands … expose an argument injection attack surface". All one-shot |
 | `cve-copilot-autoapprove` | [GitHub Copilot: RCE via Prompt Injection (CVE-2025-53773)](https://embracethered.com/blog/posts/2025/github-copilot-remote-code-execution-via-prompt-injection/) | P3 | 2025-08-12 | Injection makes the agent write `"chat.tools.autoApprove": true` into `.vscode/settings.json` — **the agent commits the file that disables its own gate**; author calls it "wormable" |
 | `cve-git-mcp` | [Anthropic quietly fixed flaws in its Git MCP server](https://www.theregister.com/2026/01/20/anthropic_prompt_injection_flaws/) | P5 | 2026-01-20 | CVE-2025-68143/-68144/-68145; argument injection in `git_diff` where "injecting '--output=/path/to/file' into the 'target' field" overwrites any file; Cyata's framing: "Each MCP server might look safe in isolation, but combine two of them, Git and Filesystem" |
@@ -282,6 +283,16 @@ needs its own pass.
     over an equivalent-cost baseline. **Resolved in favour of the abstract; the PDF-derived numbers
     are discarded as unreliable extraction and are not asserted anywhere in this dossier.**
     `self-repair`
+11. **CVE-2026-55607 is not GitSpawn's Claude Code CVE.** *(Corrected 2026-10-01, after the
+    original research.)* This dossier first took the id from `gitspawn-thn` (P5). The `microVms`
+    dossier's research found NVD describing a different bug, and the primary sources agree.
+    `cc-ghsa-worktree` (P1) is a worktree path-confusion Seatbelt escape: advisory published
+    2026-06-25, fixed in 2.1.163, reported via HackerOne. `gitspawn` (P3, published 2026-09-01) says
+    its Claude Code `core.fsmonitor` finding was "Fixed in 2.1.196", closed as a duplicate, and
+    assigns it no CVE. **Resolved against the advisory and the disclosure itself.** GitSpawn's Claude
+    Code path has no CVE, and CVE-2026-55607 is a separate, earlier fsmonitor-assisted sandbox escape.
+    The GitSpawn findings themselves are unaffected, and the Codex, Goose and Hermes ids are confirmed
+    in NVD.
 
 ## Explicitly unresolved
 

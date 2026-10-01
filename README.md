@@ -176,7 +176,7 @@ separator.
 
 **The rule the whole ecosystem omits is the only one the attacks care about.** MOSAIC's worked git
 chain is `git config core.hooksPath .githooks` plus a committed hook.
-[GitSpawn](https://www.manifold.security/blog/ai-coding-agents-git-hijack) (CVE-2026-55607) needs only
+[GitSpawn](https://www.manifold.security/blog/ai-coding-agents-git-hijack) (CVE-2026-19592, -72718, -71963) needs only
 a clone: `core.fsmonitor` in the repo's own `.git/config` runs "as the user, **outside the agent's
 sandbox and without an approval prompt**" — seven agents, **four unpatched at disclosure**. Git's own
 docs note `core.hooksPath` can be set to `/dev/null` to disable all hooks. Yet across 155 published
