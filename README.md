@@ -622,6 +622,79 @@ from 39.9% to 1.0%. No coding harness ships capability or information-flow enfor
 
 ---
 
+## [codingGuidelines/](codingGuidelines/) — coding guidelines for agents: structure, implementation, enforcement
+
+Researched 2026-10-02 from primary sources: vendor guidance from Anthropic, OpenAI, Google, GitHub,
+Cursor, Factory, Kiro and the tool authorities; the shipped source of ~16 harnesses, 8 review bots and
+the architecture-enforcement tools; this dossier's own measurement of 1,295 coding rules stated to
+agents across 57 active repositories; and the 2024–2026 measurement literature. Builds on
+[agentsMd/](agentsMd/), [gitGuardrails/](gitGuardrails/) and [softwareFactories/](softwareFactories/).
+
+📖 [guide.md](codingGuidelines/guide.md) · 📋 [rulebook.md](codingGuidelines/rulebook.md) — 40 rules ·
+📚 [sources.md](codingGuidelines/sources.md) — ~110 sources
+
+### What the research found
+
+**Every vendor says prose is advisory, and real repos are mostly prose.** Anthropic: CLAUDE.md is
+"context, not enforced configuration" ([memory docs](https://code.claude.com/docs/en/memory)); OpenAI:
+"When documentation falls short, we promote the rule into code"
+([harness engineering](https://openai.com/index/harness-engineering/)). Across 57 active agent-using
+repos measured here, **62% of 1,295 stated coding rules are prose-only**, 21% enforced. Structure rules
+are **77%** prose. Of the rules a stock tool *could* check, **45%** still aren't.
+
+**30% of repos contradict their own instructions.** The MCP TypeScript SDK's CLAUDE.md says "2-space
+indentation" — Anthropic's own example of a good instruction — while its Prettier config sets
+`"tabWidth": 4`. n8n says "**NEVER use `any` type**" and turns `no-explicit-any` off for a whole
+package. Every restatement of lint config in prose that was checked had drifted.
+
+**Prose sets the start and doesn't hold the line.** Agents proactively opened on-demand rule files in
+**3.5%** of runs, and 97.6% of violations happened without the policy being read
+([arXiv:2607.26819](https://arxiv.org/abs/2607.26819)). Quality guidance "reduces initial verbosity and
+erosion by up to a third, without affecting degradation rates"
+([SlopCodeBench](https://arxiv.org/abs/2603.24755)). The one prose rule measured to help is scope:
+"preserve" cut over-editing 0.195→0.131 ([arXiv:2609.04061](https://arxiv.org/abs/2609.04061)).
+
+**The best-measured mechanism is being switched off by the people who built it.** A lint-gated edit
+lifted SWE-agent 15.0%→18.0% ([arXiv:2405.15793](https://arxiv.org/abs/2405.15793)); SWE-agent's
+current default ships `USE_LINTER = "false"` ([config](https://github.com/SWE-agent/SWE-agent/blob/3ea751c087f32b16e039a2233dd6eefecef325d5/config/default.yaml)). OpenCode disabled LSP and formatters by default on
+2026-04-17 ([PR #22997](https://github.com/anomalyco/opencode/pull/22997)); Cline v4's editor returns only the diff. Cursor's lint loop is IDE-only, and
+Claude Code starts no language servers in cloud sessions. No 2025–2026 ablation of lint hooks in a
+modern harness exists.
+
+**The hooks teams write instead fix silently and never gate.** 0 of 7 corpus repos with post-edit lint
+hooks block on failure; across a public sample, 11 of 38 lint-running `PostToolUse` hooks explicitly
+swallow failures. Claude Code treats exit 1 as non-blocking; no harness's post-edit hook can undo an
+edit; Cursor's `afterFileEdit` has no output channel at all.
+
+**Agents reach for the escape hatch, and the rule against it is the least enforced.** "AI agents are
+9x more prone to use the 'any' keyword" ([arXiv:2602.17955](https://arxiv.org/abs/2602.17955)), and
+94% of LLM TypeScript compile errors are type errors
+([arXiv:2504.09246](https://arxiv.org/abs/2504.09246)). "No `any`" is stated in 10 corpus repos and
+fully enforced in **1**.
+
+**The dominant failure is doing too much.** Scope creep is 73.6% of feature-task failures
+([FeatBench](https://arxiv.org/abs/2509.22237)); after Cursor adoption, static-analysis warnings rose
+30.3% and complexity 41.6%, persistently ([arXiv:2511.04427](https://arxiv.org/abs/2511.04427)). What
+predicts agent failure structurally is scatter and scale — "Patches that touch seven or more files are
+never solved" ([SWE-bench-Live](https://arxiv.org/abs/2505.23419)) — not file length, which no study
+isolates.
+
+**Scoped rules attach on read, not on write.** "Path-scoped rules trigger when Claude reads files
+matching the pattern"; creating a file with `Write` loads none
+([#96361](https://github.com/anthropics/claude-code/issues/96361)). Cursor staff say the same. A rule
+for `src/api/**` doesn't exist for the agent writing the first file there.
+
+**The exemplars tie every rule to its check.** PostHog tags each rule `[lint: <id>]` or `[review]`;
+n8n's lint message says what to do and that "an inline `eslint-disable` of the rule… fails CI";
+temporal's names the sanctioned `//nolint` form. CI backs 266 of the 273 enforced rules in the
+corpus — hooks are the fast path, CI is the gate.
+
+**Folklore:** "Never send an LLM to do a linter's job" is HumanLayer's, not Anthropic's; "files under
+500 lines" has no source; "+41% bugs" is a 2024 autocomplete-era vendor PDF; CodeScene's "30% defect
+risk" reframes a refactoring break-rate result that showed no effect for Sonnet 4.5.
+
+---
+
 ## Conventions
 
 - **Every claim carries a source.** Verbatim quotes where the wording matters.
